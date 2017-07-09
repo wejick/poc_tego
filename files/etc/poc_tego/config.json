@@ -1,0 +1,9 @@
+{
+    "name": "poc_tego",
+    "version": "0.0.1",
+    "description": "app to test tego",
+    "http": {
+        "listen": "localhost",
+        "port": "4125"
+    }
+}

@@ -1,22 +1,45 @@
 package main
 
 import (
-	"github.com/wejick/poc_tego/package1"
-	"github.com/wejick/poc_tego/package2"
+	"log"
+	"net"
+	"net/http"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
+
+	"github.com/julienschmidt/httprouter"
+	"github.com/wejick/poc_tego/src/random"
+	"github.com/wejick/tego/config"
 )
 
 func main() {
-	function2 := func(interface1 package1.Interface1) {
+	err := config.LoadConfigFromFile("./files/etc/poc_tego/config.json")
+	if err != nil {
+		log.Panicln("couldn't load config file")
 	}
-	function2(package2.Struct1{})
 
-	// not sure which one was used, but this one would error
-	// ./app.go:11: cannot use package2.Struct1 literal (type *package2.Struct1) as type *package1.Interface1 in argument to
-	//  function2:
-	//         *package1.Interface1 is pointer to interface, not interface
-	// normally we don't create pointer to interface since interface itself is referenced object just like slice or map
+	router := httprouter.New()
 
-	// function2 := func(interface1 *package1.Interface1) {
-	// }
-	// function2(&package2.Struct1{})
+	router.GET("/random", random.GetRandomHTTP)
+
+	go goRPCServer()
+
+	listenTo := config.Get().HTTP.Listen + ":" + config.Get().HTTP.Port
+	log.Fatal(http.ListenAndServe(listenTo, router))
+}
+
+func goRPCServer() {
+	lis, err := net.Listen("tcp", ":8080")
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+
+	s := grpc.NewServer()
+	random.RegisterRandomServer(s, &random.RandomS{})
+	reflection.Register(s)
+
+	if err := s.Serve(lis); err != nil {
+		log.Fatalf("failed to serve: %v", err)
+	}
 }
